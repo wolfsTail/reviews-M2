@@ -1,7 +1,9 @@
 {% extends 'layout/base.html' %}
 
 {% block content %}
+{% if post.thumbnail %}
 <img src='{{ post.thumbnail.url }}' alt='{{ post.title }}' width='250' />
+{% endif %}
 <strong>{{ post.title }}</strong>
 <p>{{ post.description }}</p>
 <p>{{ post.text }}</p>
