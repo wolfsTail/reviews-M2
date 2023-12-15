@@ -1,8 +1,12 @@
+from django.http import HttpResponseRedirect
+from django.shortcuts import redirect
 from django.views.generic import DetailView, UpdateView, CreateView
 from django.db import transaction
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.contrib.messages.views import SuccessMessageMixin
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordResetView,\
+      PasswordResetDoneView, PasswordResetConfirmView, PasswordResetCompleteView
+from django.contrib.auth import logout
 
 from .models import Profile
 from .forms import UserUpdateForm, ProfileUpdateForm, UserRegisterForm, UserLoginForm
@@ -73,7 +77,37 @@ class UserLoginView(SuccessMessageMixin, LoginView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Аутентификация'
         return context
+    
+
+class UserPasswordResetView(PasswordResetView):
+    template_name = 'accounts/password_reset_form.html'
+    email_template_name = 'accounts/password_reset_email.html'
+    success_url = reverse_lazy('password-reset-done')
+
+
+class UserPasswordResetDoneView(PasswordResetDoneView):
+    template_name = 'accounts/password_reset_done.html'
+
+
+class UserPasswordResetConfirmView(PasswordResetConfirmView):
+    template_name = "accounts/password_reset_confirm.html"
+    success_url=reverse_lazy("password_reset_complete")
+
+
+class UserPasswordResetCompleteView(PasswordResetCompleteView):
+    template_name = "accounts/password_reset_complete.html"
+
 
 class UserLogoutView(LogoutView):
     next_page = 'home'
+    http_method_names = ["get", "post", "options"]
+
+    def get(self, request, *args, **kwargs):
+        """I want to use method get!"""
+        logout(request)
+        redirect_to = self.get_success_url()
+        if redirect_to != request.get_full_path():
+            # Redirect to target page once the session has been cleared.
+            return HttpResponseRedirect(redirect_to)
+        return super().get(request, *args, **kwargs)
     

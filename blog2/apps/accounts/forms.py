@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.forms import AuthenticationForm
+from django_recaptcha.fields import ReCaptchaField
 
 from .models import Profile
 
@@ -31,10 +32,11 @@ class UserUpdateForm(forms.ModelForm):
                                  widget=forms.TextInput(attrs={"class": "form-control mb-1"}))
     last_name = forms.CharField(max_length=64,
                                 widget=forms.TextInput(attrs={"class": "form-control mb-1"}))
+    recaptcha = ReCaptchaField()
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name')
+        fields = ('username', 'email', 'first_name', 'last_name', 'recaptcha',)
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -47,8 +49,10 @@ class UserUpdateForm(forms.ModelForm):
 
 class UserRegisterForm(UserCreationForm):
 
+    recaptcha = ReCaptchaField()
+
     class Meta(UserCreationForm.Meta):
-        fields = UserCreationForm.Meta.fields + ('email', 'first_name', 'last_name')
+        fields = UserCreationForm.Meta.fields + ('email', 'first_name', 'last_name', 'recaptcha',)
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -71,13 +75,16 @@ class UserRegisterForm(UserCreationForm):
 
 class UserLoginForm(AuthenticationForm):
 
+    recaptcha = ReCaptchaField()
+
+    class Meta:
+        model = User
+        fields = ('username', 'password', 'recaptcha',)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields:
-            self.fields['username'].widget.attrs['placeholder'] = 'Введите логин'
-            self.fields['password'].widget.attrs['placeholder'] = 'Введите пароль'
-            self.fields['username'].label = 'Логин'
-            self.fields[field].widget.attrs.update({
-                'class': 'form-control',
-                'autocomplete': 'off'
-            })
+        self.fields['username'].widget.attrs['placeholder'] = 'Логин пользователя'
+        self.fields['username'].widget.attrs['class'] = 'form-control'
+        self.fields['password'].widget.attrs['placeholder'] = 'Пароль пользователя'
+        self.fields['password'].widget.attrs['class'] = 'form-control'
+        self.fields['username'].label = 'Логин'
