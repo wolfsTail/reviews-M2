@@ -2,6 +2,8 @@ from django.db import models
 from django.core.validators import FileExtensionValidator
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.utils import timezone
+from django.core.cache import cache
 
 from apps.services.utils import unique_slugify
 
@@ -30,6 +32,13 @@ class Profile(models.Model):
     
     def get_absolute_url(self):
         return reverse('profile_detail', kwargs={'slug': self.slug})
+    
+    def is_online(self):
+        last_seen = cache.get(f"last-seen-{self.user.id}")
+        if last_seen is not None and timezone.now() < last_seen + timezone.timedelta(seconds=300):
+            return True
+        else:
+            return False
 
     def __str__(self):
         return self.user.username

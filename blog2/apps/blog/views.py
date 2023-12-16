@@ -1,4 +1,5 @@
 from typing import Any
+from django.views import View
 from django.views.generic import ListView, DetailView, UpdateView
 from django.views.generic import CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -7,9 +8,10 @@ from django.shortcuts import redirect
 from django.http import JsonResponse
 from taggit.models import Tag
 from apps.services.mixins import AuthorRequiredMixin
+from django.shortcuts import render
 
 from .forms import PostCreateForm, PostUpdateForm, CommentCreateForm
-from .models import Category, Post, Comment
+from .models import Category, Post, Comment, Rating
 
 
 class PostListView(ListView):
@@ -146,3 +148,64 @@ class PostByTagListView(ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = f'Статьи по тегу: {self.tag.name}'
         return context
+
+
+class RatingCreateView(View):
+    model = Rating
+
+    def post(self, request, *args, **kwargs):
+        post_id = request.POST.get('post_id')
+        value = int(request.POST.get('value'))
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
+        ip_address = ip
+        user = request.user if request.user.is_authenticated else None
+
+        rating, created = self.model.objects.get_or_create(
+           post_id=post_id,
+            ip_address=ip_address,
+            defaults={'value': value, 'user': user},
+        )
+
+        if not created:
+            if rating.value == value:
+                rating.delete()
+                return JsonResponse({'status': 'deleted', 'rating_sum': rating.post.get_sum_rating()})
+            else:
+                rating.value = value
+                rating.user = user
+                rating.save()
+                return JsonResponse({'status': 'updated', 'rating_sum': rating.post.get_sum_rating()})
+        return JsonResponse({'status': 'created', 'rating_sum': rating.post.get_sum_rating()})
+
+
+  # Обработка ошибок
+def exc_handler403(request, exception):
+    """
+    Oшибка 403
+    """
+    return render(request=request, template_name='errors/error_page.html', status=403, context={
+        'title': 'Ошибка доступа: 403',
+        'error_message': 'Доступ к этой странице ограничен',
+    })
+
+def exc_handler404(request, exception):
+    """
+    Oшибка 404
+    """
+    return render(request=request, template_name='errors/error_page.html', status=404, context={
+        'title': 'Страница не найдена: 404',
+        'error_message': 'Данная страница не найдена или перемещена', 
+    })
+
+
+def exc_handler500(request):
+    """
+    Ошибка 500
+    """
+    return render(request=request, template_name='errors/error_page.html', status=500, context={
+        'title': 'Ошибка сервера: 500',
+        'error_message': 'Внутренняя ошибка сервера, отчет об ошибке направлен для рассмотрения',
+    })
+
+

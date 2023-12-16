@@ -19,8 +19,16 @@ from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
 
+from apps.blog.rss import LatestPostFeed
+
+
+handler403 = 'apps.blog.views.exc_handler403'
+handler404 = 'apps.blog.views.exc_handler404'
+handler500 = 'apps.blog.views.exc_handler500'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('feeds/latest/', LatestPostFeed(), name='latest_post_feed'),
     path('', include('apps.blog.urls')),
     path('', include('apps.accounts.urls')),
     path('ckeditor/', include('ckeditor_uploader.urls')),
